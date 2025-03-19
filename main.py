@@ -9,7 +9,8 @@ from PyPDF2 import PdfReader
 import tiktoken
 
 # ✅ PostgreSQL Connection
-DATABASE_URL = "postgresql://postgres:Kuntala%40987@db.taeomgppyekguviidpbr.supabase.co:5432/postgres"
+DATABASE_URL = "postgresql://postgres:Kuntala%40987@db.taeomgppyekguviidpbr.supabase.co:5432/postgres?sslmode=require"
+
 
 GROQ_API_KEY = "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"
 
