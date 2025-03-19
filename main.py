@@ -134,3 +134,13 @@ async def upload_files(files: List[UploadFile] = File(...), db=Depends(get_db)):
 @app.on_event("startup")
 async def startup():
     await create_pool()
+    async with app.state.db_pool.acquire() as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS embeddings (
+                id SERIAL PRIMARY KEY,
+                text TEXT NOT NULL,
+                embedding JSONB NOT NULL
+            );
+        """)
+        print("✅ Database initialized: embeddings table is ready.")
+
