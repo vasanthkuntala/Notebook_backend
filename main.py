@@ -8,13 +8,12 @@ from typing import List
 from PyPDF2 import PdfReader
 import tiktoken
 from fastapi.middleware.cors import CORSMiddleware
-# ✅ PostgreSQL Connection
+
 DATABASE_URL = "postgresql://notebook_lish_user:niBCJU8PwlG0yqSgOWqVyqrj3QtIk7GT@dpg-cvd8d8l2ng1s73drdm0g-a/notebook_lish"
 
 
 GROQ_API_KEY = "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"
 
-# ✅ FastAPI App
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -23,7 +22,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# ✅ PostgreSQL Connection Pool
+
 async def create_pool():
     app.state.db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=5)
 
@@ -31,24 +30,22 @@ async def get_db():
     async with app.state.db_pool.acquire() as conn:
         yield conn
 
-# ✅ Pydantic Model
 class QueryRequest(BaseModel):
     query: str
 
-# ✅ Embedding Function (Optimized)
+
 def embed_text(text: str) -> List[float]:
     encoding = tiktoken.get_encoding("cl100k_base")
     tokens = encoding.encode(text)[:300]  # ✅ Limit tokens for efficiency
     return [len(tokens) * 0.01] * min(10, len(tokens))  # ✅ Simulated embedding
 
-# ✅ Cosine Similarity Function
 def cosine_similarity(vec1, vec2):
     dot_product = sum(a * b for a, b in zip(vec1, vec2))
     magnitude1 = sum(a**2 for a in vec1) ** 0.5
     magnitude2 = sum(b**2 for b in vec2) ** 0.5
     return dot_product / (magnitude1 * magnitude2) if magnitude1 and magnitude2 else 0.0
 
-# ✅ Query AI Model
+
 @app.post("/query/")
 async def query_docs(request: QueryRequest, db=Depends(get_db)):
     if len(request.query) > 500:
@@ -56,10 +53,9 @@ async def query_docs(request: QueryRequest, db=Depends(get_db)):
 
     query_embedding = embed_text(request.query)
 
-    # ✅ Retrieve stored document embeddings
     rows = await db.fetch("SELECT text, embedding FROM embeddings")
     
-    # ✅ Compute cosine similarity
+   
     ranked_chunks = sorted(
         rows, key=lambda row: cosine_similarity(query_embedding, json.loads(row["embedding"])),
         reverse=True
@@ -72,7 +68,7 @@ async def query_docs(request: QueryRequest, db=Depends(get_db)):
 
     context = "\n".join(retrieved_chunks)
 
-    # ✅ Query Groq AI
+  
     prompt = f"Based on these document excerpts:\n\n{context}\n\nAnswer: {request.query}"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
     payload = {
@@ -89,7 +85,6 @@ async def query_docs(request: QueryRequest, db=Depends(get_db)):
 
     return {"answer": groq_answer}
 
-# ✅ Optimized PDF Text Extraction
 async def extract_text_from_pdf(file: UploadFile):
     reader = PdfReader(file.file)
     extracted_text = []
@@ -99,17 +94,17 @@ async def extract_text_from_pdf(file: UploadFile):
         if text:
             extracted_text.append(text)
         if sum(len(t) for t in extracted_text) > 2000:
-            break  # ✅ Limit memory usage
+            break 
 
     return " ".join(extracted_text)
 
-# ✅ Upload & Process Multiple PDFs (Clears DB Before Upload)
+
 @app.post("/upload/")
 async def upload_files(files: List[UploadFile] = File(...), db=Depends(get_db)):
     if len(files) > 10:
         raise HTTPException(status_code=400, detail="Cannot upload more than 10 files at a time.")
 
-    # ✅ Delete all existing records before inserting new ones
+   
     await db.execute("DELETE FROM embeddings")
     print("🗑️ Database cleared before new uploads.")
 
@@ -121,7 +116,7 @@ async def upload_files(files: List[UploadFile] = File(...), db=Depends(get_db)):
             results.append({"file": file.filename, "status": "Failed", "reason": "Empty file"})
             continue
 
-        await file.seek(0)  # ✅ Reset file pointer
+        await file.seek(0)  
 
         extracted_text = await extract_text_from_pdf(file)
 
@@ -136,7 +131,7 @@ async def upload_files(files: List[UploadFile] = File(...), db=Depends(get_db)):
 
     return {"message": "Processing complete, previous records deleted", "results": results}
 
-# ✅ Initialize Database on Startup
+
 @app.on_event("startup")
 async def startup():
     await create_pool()
