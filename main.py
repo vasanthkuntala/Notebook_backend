@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from typing import List
 from PyPDF2 import PdfReader
 import tiktoken
-
+from fastapi.middleware.cors import CORSMiddleware
 # ✅ PostgreSQL Connection
 DATABASE_URL = "postgresql://notebook_lish_user:niBCJU8PwlG0yqSgOWqVyqrj3QtIk7GT@dpg-cvd8d8l2ng1s73drdm0g-a/notebook_lish"
 
@@ -16,7 +16,13 @@ GROQ_API_KEY = "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"
 
 # ✅ FastAPI App
 app = FastAPI()
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Change to specific frontend URL for security
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # ✅ PostgreSQL Connection Pool
 async def create_pool():
     app.state.db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=5)
